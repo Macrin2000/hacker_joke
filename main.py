@@ -93,8 +93,8 @@ def check_bank_account(hacker_file, chrome_history):
                 his_bank = b
                 break
         if his_bank:
+            hacker_file.write("Además veo que has visitado los bancos {}... Interesante...\n".format(his_bank))
             break
-    hacker_file.write("Además veo que has visitado los bancos {}... Interesante...\n".format(his_bank))
 
 #Bucle principal que ejecuta todas las funciones
 def main():
